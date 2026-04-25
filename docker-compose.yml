@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: good-hamburger-db
+    environment:
+      POSTGRES_DB: goodhamburger
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d goodhamburger"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: good-hamburger-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@goodhamburger.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    configs:
+      - source: pgadmin_servers
+        target: /pgadmin4/servers.json
+
+configs:
+  pgadmin_servers:
+    content: |
+      {
+        "Servers": {
+          "1": {
+            "Name": "GoodHamburger",
+            "Group": "Servers",
+            "Host": "postgres",
+            "Port": 5432,
+            "MaintenanceDB": "goodhamburger",
+            "Username": "postgres",
+            "SSLMode": "prefer"
+          }
+        }
+      }
