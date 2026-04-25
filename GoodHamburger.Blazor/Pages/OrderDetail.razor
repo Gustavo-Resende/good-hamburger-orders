@@ -1,0 +1,105 @@
+@page "/orders/{Id:guid}"
+@inject OrderService OrderService
+@inject NavigationManager Navigation
+@using GoodHamburger.Blazor.Models
+@using GoodHamburger.Blazor.Services
+
+<div class="container mt-4">
+    @if (order == null && !notFound)
+    {
+        <p>Carregando...</p>
+    }
+    else if (notFound)
+    {
+        <p class="text-danger">Pedido não encontrado.</p>
+        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/orders")'>Voltar</button>
+    }
+    else if (order != null)
+    {
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Pedido @order.Id.ToString()[..8]</h5>
+                <small class="text-muted">@order.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Preço</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>R$ @item.Price.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <hr />
+                <p>Subtotal: R$ @order.Subtotal.ToString("F2")</p>
+                <p>
+                    Desconto: R$ @order.Discount.ToString("F2")
+                    (@(order.Subtotal > 0 ? (order.Discount / order.Subtotal * 100).ToString("F0") : "0")%)
+                </p>
+                <p><strong>Total: R$ @order.Total.ToString("F2")</strong></p>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo($"/orders/{Id}/edit")'>Editar</button>
+                    <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/orders")'>Voltar</button>
+                </div>
+                <button class="btn btn-outline-danger" @onclick='() => RequestDelete(Id)'>Deletar Pedido</button>
+            </div>
+        </div>
+
+        @if (errorMessage != null)
+        {
+            <p class="text-danger mt-2">@errorMessage</p>
+        }
+    }
+</div>
+
+<ConfirmModal Visible="showConfirm"
+              Title="Confirmar exclusão"
+              Message="Deseja deletar este pedido? Esta ação não pode ser desfeita."
+              ConfirmLabel="Deletar"
+              OnConfirm="ExecuteDelete"
+              OnCancel="() => showConfirm = false" />
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private OrderResponse? order;
+    private string? errorMessage;
+    private bool notFound = false;
+    private bool showConfirm = false;
+    private Guid orderToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await OrderService.GetOrderByIdAsync(Id);
+        if (order == null)
+            notFound = true;
+    }
+
+    private void RequestDelete(Guid id)
+    {
+        orderToDelete = id;
+        showConfirm = true;
+    }
+
+    private async Task ExecuteDelete()
+    {
+        showConfirm = false;
+        var (success, error) = await OrderService.DeleteOrderAsync(orderToDelete);
+        if (success)
+            Navigation.NavigateTo("/orders");
+        else
+            errorMessage = error;
+    }
+}
