@@ -5,4 +5,5 @@
   <Project Path="GoodHamburger.API/GoodHamburger.API.csproj" />
   <Project Path="GoodHamburger.Domain.Tests/GoodHamburger.Domain.Tests.csproj" />
   <Project Path="GoodHamburger.Application.Tests/GoodHamburger.Application.Tests.csproj" />
+  <Project Path="GoodHamburger.Blazor/GoodHamburger.Blazor.csproj" />
 </Solution>
