@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+    <File Path="README.md" />
+    <File Path="global.json" />
+    <File Path="CLAUDE.md" />
+  </Folder>
   <Project Path="GoodHamburger.Domain/GoodHamburger.Domain.csproj" />
   <Project Path="GoodHamburger.Application/GoodHamburger.Application.csproj" />
   <Project Path="GoodHamburger.Infrastructure/GoodHamburger.Infrastructure.csproj" />
