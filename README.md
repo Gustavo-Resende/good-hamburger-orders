@@ -119,15 +119,53 @@ GoodHamburger.Application.Tests  # testes dos handlers com mocks
 
 ---
 
-## Decisões e o que ficou fora
+## Decisões de arquitetura
 
-**Blazor WebAssembly** foi escolhido por rodar inteiramente no browser e demonstrar claramente a separação entre frontend e backend — o Blazor consome a API via HTTP igual a qualquer outro cliente.
+### Clean Architecture + DDD
 
-**Autenticação** está fora do escopo do desafio.
+O projeto está dividido em quatro camadas com dependências que fluem para dentro — Domain não conhece nada, Application conhece só o Domain, Infrastructure implementa as interfaces definidas pela Application, API orquestra tudo. Essa separação garante que regras de negócio nunca dependam de detalhes de infraestrutura como banco ou framework.
 
-**Paginação no `GET /orders`** não foi solicitada. A estrutura com Specification Pattern já está preparada para suportar.
+O domínio usa o modelo rico — `Order` é o Aggregate Root e concentra toda a lógica de validação, adição de itens e cálculo de desconto. `OrderItem` é criado exclusivamente pelo `Order` via construtor `internal`, impedindo que outras camadas montem itens inconsistentes.
 
-**GraphQL** listado como diferencial na vaga — não implementado por limitação de prazo. A API REST cobre todos os requisitos do desafio.
+### CQRS com MediatR
+
+Commands alteram estado, Queries apenas leem. Cada caso de uso tem um arquivo próprio com Command/Query e seu Handler correspondente. O MediatR desacopla a API dos handlers — o controller só conhece `IMediator`, não os handlers diretamente.
+
+### Result Pattern (Ardalis.Result)
+
+Em vez de lançar exceptions para controle de fluxo, todos os handlers retornam `Result<T>`. Erros esperados (pedido não encontrado, item duplicado, lista vazia) são representados como `Result.NotFound()` ou `Result.Invalid()`. O `[TranslateResultToActionResult]` converte automaticamente para os status HTTP corretos. Exceptions genuínas são capturadas pelo `GlobalExceptionHandler` e retornam HTTP 500 sem expor detalhes internos.
+
+### Cardápio in-memory com GUIDs determinísticos
+
+O cardápio é fixo por definição do desafio. Implementado como lista estática com GUIDs fixos em `MenuSeed`, exposto via `MenuService` registrado como Singleton. GUIDs determinísticos garantem consistência entre execuções e facilitam testes — é possível referenciar um item do cardápio pelo GUID conhecido sem consultar o banco.
+
+### Shadow Property no OrderItem
+
+`OrderItem` não expõe `Id` público — a PK da tabela `OrderItems` é gerenciada exclusivamente pelo EF Core via shadow property. Essa decisão mantém o domínio limpo: `OrderItem` não existe fora de um `Order` e nunca será buscado diretamente por ID, então expor esse detalhe de infraestrutura no domínio seria contaminação desnecessária.
+
+### Snapshot de preço
+
+O preço dos itens é copiado para o `OrderItem` no momento da criação do pedido. Alterações futuras no cardápio não afetam pedidos já realizados — comportamento correto para qualquer sistema de pedidos.
+
+### Tabela separada para OrderItems (vs Owned Entity)
+
+EF Core suporta Owned Entities para mapear coleções sem tabela própria, mas a abordagem tem limitações conhecidas em coleções — queries menos previsíveis, dificuldade com cascata, comportamento inconsistente entre versões. A decisão foi usar tabela separada com FK explícita e `OnDelete(Cascade)`, mais previsível e extensível.
+
+### Blazor WebAssembly
+
+Escolhido por rodar inteiramente no browser como SPA, demonstrando separação clara entre frontend e backend. O Blazor consome a API via `HttpClient` igual a qualquer outro cliente. A URL da API é configurada via `wwwroot/appsettings.json`, sem hardcode no código.
+
+---
+
+## O que ficou fora
+
+**Autenticação e autorização** — fora do escopo do desafio. A estrutura de camadas facilita adição futura via middleware no pipeline da API.
+
+**Paginação no `GET /orders`** — não solicitada. O Specification Pattern já está em uso no projeto e suporta paginação com alteração mínima no handler.
+
+**GraphQL** — listado como diferencial na vaga, não implementado por limitação de prazo. A camada de Application com handlers independentes facilita a exposição via Hot Chocolate sem alterar regras de negócio.
+
+**Testes de integração** — apenas testes unitários de Domain e Application foram implementados, cobrindo as regras de negócio e os handlers com mocks. Testes de integração com banco real ficariam em um projeto separado `GoodHamburger.Integration.Tests`.
 
 ---
 
